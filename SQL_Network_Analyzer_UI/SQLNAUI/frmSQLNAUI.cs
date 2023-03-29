@@ -1,8 +1,11 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace SQLNAUI
 {
@@ -10,10 +13,33 @@ namespace SQLNAUI
     {
         bool convList = false;
         string addrFormat = "Default";
+        [DllImport("user32.dll")]
+        static extern bool HideCaret(IntPtr hWnd);
 
         public FrmSQLNAUI()
         {
             InitializeComponent();
+            TxtCommand.Focus();
+        }
+
+        private void ExecuteCmdCommand(string Command)
+        {
+            ProcessStartInfo ProcessInfo;
+            Process Process;
+
+            ProcessInfo = new ProcessStartInfo("cmd.exe", "/K " + Command);
+            ProcessInfo.CreateNoWindow = true;
+            ProcessInfo.UseShellExecute = true;
+            ProcessInfo.WorkingDirectory = System.IO.Directory.GetCurrentDirectory();
+
+            Process = Process.Start(ProcessInfo);
+        }
+
+        private void UpdateOutputFilePath(string filePath)
+        {
+            int lastSlash = filePath.LastIndexOf('\\');
+            filePath = (lastSlash > -1) ? filePath.Substring(0, lastSlash) : filePath;
+            TxtLogFile.Text = filePath + "\\dump.stat.csv";
         }
 
         private void FrmSQLNAUI_Load(object sender, EventArgs e)
@@ -34,6 +60,7 @@ namespace SQLNAUI
             if (result == System.Windows.Forms.DialogResult.OK)
             {
                 TxtFileSpec.Text = this.OpenFileDialog1.FileName;
+                UpdateOutputFilePath(this.OpenFileDialog1.FileName);
             }
 
             UpdateCommand();
@@ -57,7 +84,9 @@ namespace SQLNAUI
             TxtCommand.Text = "SQLNA";
             if (TxtFileSpec.Text.Trim() != "") TxtCommand.Text += @" """ + TxtFileSpec.Text.Trim() + @"""";
             if (TxtLogFile.Text.Trim() != "") TxtCommand.Text += @" /output """ + TxtLogFile.Text.Trim() + @"""";
-            if (TxtSQLHint.Text.Trim() != "") TxtCommand.Text += @" /sql " + TxtSQLHint.Text.Trim().Replace(" ", " /sql ");
+            if (TxtSourceIP.Text.Trim() != "") TxtCommand.Text += @" /source " + TxtSourceIP.Text.Trim().Replace(" ", " /source ");
+            if (TxtDestinationIP.Text.Trim() != "") TxtCommand.Text += @" /dest " + TxtDestinationIP.Text.Trim().Replace(" ", " /dest ");
+            if (TxtPort.Text.Trim() != "") TxtCommand.Text += @" /port " + TxtPort.Text.Trim().Replace(" ", " /port ");
             if (convList) TxtCommand.Text += @" /convList";
             if (addrFormat != "Default") TxtCommand.Text += $@" /filterFmt {addrFormat}";
         }
@@ -112,7 +141,11 @@ namespace SQLNAUI
 
         private void TxtFileSpec_TextChanged(object sender, EventArgs e)
         {
+            HideCaret(TxtFileSpec.Handle);
             UpdateCommand();
+
+            //BtnParse
+            this.BtnParse.Enabled = !string.IsNullOrWhiteSpace(this.TxtFileSpec.Text);
         }
 
         private void TxtSQLHint_TextChanged(object sender, EventArgs e)
@@ -124,7 +157,8 @@ namespace SQLNAUI
         {
             if (TxtCommand.Text != "SQLNA")
             {
-                System.Diagnostics.Process.Start(System.Environment.GetEnvironmentVariable("ComSpec"), @" /K " + TxtCommand.Text);
+                //System.Diagnostics.Process.Start(System.Environment.GetEnvironmentVariable("ComSpec"), @" /K " + TxtCommand.Text);
+                ExecuteCmdCommand(TxtCommand.Text);
             }
         }
 
@@ -134,6 +168,7 @@ namespace SQLNAUI
 
             var filePath = fileList[0].Trim('"').Replace(@"\\", @"\");
             TxtFileSpec.Text = filePath;
+            UpdateOutputFilePath(filePath);
         }
 
 
@@ -147,6 +182,45 @@ namespace SQLNAUI
             {
                 e.Effect = DragDropEffects.None;
             }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            DialogResult result;
+            this.OpenFileDialog1.Multiselect = false;
+            // this.OpenFileDialog1.ValidateNames = true;
+            this.OpenFileDialog1.Title = "Open Files to Analyze";
+            this.OpenFileDialog1.SupportMultiDottedExtensions = true;
+            this.OpenFileDialog1.CheckPathExists = true;
+            this.OpenFileDialog1.Filter = @"Capture Files (*.cap;*.etl;*.pcap;*.pcapng)|*.cap;*.etl;*.pcap;*.pcapng|All Files (*.*)|*.*";
+            result = this.OpenFileDialog1.ShowDialog(this.Owner);
+            if (result == System.Windows.Forms.DialogResult.OK)
+            {
+                TxtFileSpec.Text = this.OpenFileDialog1.FileName;
+                UpdateOutputFilePath(this.OpenFileDialog1.FileName);
+            }
+
+            UpdateCommand();
+        }
+
+        private void TxtFileSpec_Enter(object sender, EventArgs e)
+        {
+            HideCaret(TxtFileSpec.Handle);
+        }
+
+        private void TxtSourceIP_TextChanged(object sender, EventArgs e)
+        {
+            UpdateCommand();
+        }
+
+        private void TxtDestinationIP_TextChanged(object sender, EventArgs e)
+        {
+            UpdateCommand();
+        }
+
+        private void TxtPort_TextChanged(object sender, EventArgs e)
+        {
+            UpdateCommand();
         }
     }
 }
