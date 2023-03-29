@@ -93,9 +93,9 @@
             this.Label2.Location = new System.Drawing.Point(35, 88);
             this.Label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.Label2.Name = "Label2";
-            this.Label2.Size = new System.Drawing.Size(163, 20);
+            this.Label2.Size = new System.Drawing.Size(130, 20);
             this.Label2.TabIndex = 3;
-            this.Label2.Text = "Log File Output Path";
+            this.Label2.Text = "Output File Path";
             // 
             // TxtLogFile
             // 

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -263,52 +264,23 @@ namespace SQLNA
 
         public static string getDiagLogFileName(string LogName)
         {
-            int PosDot = -1;
-            int PosSlash = -1;
+            string directoryName = Path.GetDirectoryName(LogName);
+            string fileName = Path.GetFileNameWithoutExtension(LogName);
+            return directoryName + "\\" + fileName + ".log";
+        }
 
-            // truncate at first * if any
-            PosDot = LogName.LastIndexOf(".");
-            if (PosDot >= 0)
-            {
-                PosSlash = LogName.LastIndexOf(@"\");
-                if (PosDot < PosSlash)
-                {
-                    return LogName + ".diag.log";
-                }
-                else
-                {
-                    return LogName.Substring(0, PosDot) + ".diag" + LogName.Substring(PosDot);
-                }
-            }
-            else
-            {
-                return LogName + ".diag.log";
-            }
+        public static string getGenericLogFileName(string LogName)
+        {
+            string directoryName = Path.GetDirectoryName(LogName);
+            string fileName = Path.GetFileNameWithoutExtension(LogName);
+            return directoryName + "\\" + fileName + "2.log";
         }
 
         public static string getStatLogFileName(string LogName)
         {
-            int PosDot = -1;
-            int PosSlash = -1;
-
-            // truncate at first * if any
-            PosDot = LogName.LastIndexOf(".");
-            if (PosDot >= 0)
-            {
-                PosSlash = LogName.LastIndexOf(@"\");
-                if (PosDot < PosSlash)
-                {
-                    return LogName + ".stat.csv";
-                }
-                else
-                {
-                    return LogName.Substring(0, PosDot) + ".stat.csv";
-                }
-            }
-            else
-            {
-                return LogName + ".stat.csv";
-            }
+            string directoryName = Path.GetDirectoryName(LogName);
+            string fileName = Path.GetFileNameWithoutExtension(LogName);
+            return directoryName + "\\" + fileName + "-results.csv";
         }
 
         #endregion

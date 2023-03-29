@@ -17,8 +17,15 @@ namespace SQLNA
 
     class OutputText
     {
-        public static void TextReport(NetworkTrace Trace)
+        static string SOURCE_IP = string.Empty;
+        static string DESTINATION_IP = string.Empty;
+        static string PORT = string.Empty;
+        public static void TextReport(NetworkTrace Trace, string sourceIp, string destinationIp, string portNumber)
         {
+            SOURCE_IP = sourceIp;
+            DESTINATION_IP = destinationIp;
+            PORT = portNumber;
+
             DisplayHeader();
             DisplayFileStatistics(Trace);
             DisplayTrafficStatistics(Trace);
@@ -3511,7 +3518,7 @@ namespace SQLNA
 
         private static void OutputStats(NetworkTrace Trace)
         {
-            Program.logStat(@"SourceIP,SourcePort,DestIP,DestPort,IPVersion,Protocol,Syn,Fin,Reset,AckSynDelayms,Retransmit,ClientDup,ServerDup,KeepAlive,Integrated Login,NTLM,Login7,Encrypted,Mars,PacketVisualization,Pktmon,MaxPktmonDelay,PktmonDrop,PktmonDropReason,MaxPayloadSize,PayloadSizeLimit,Frames,Bytes,SentBytes,ReceivedBytes,Bytes/Sec,StartFile,EndFile,StartTime,EndTime,Duration,ClientTTL,ClientLowHops,ServerTTL,ServerLowHops,ServerName,ServerVersion,DatabaseName,ServerTDSVersion,ClientTDSVersion,ServerTLSVersion,ClientTLSVersion,RedirSrv,RedirPort,Error,ErrorState,ErrorMessage,");
+            Program.logStat(@"SourceIP,SourcePort,DestIP,DestPort,IPVersion,Protocol,Syn,Fin,Reset,AckSynDelayms,Retransmit,ClientDup,ServerDup,KeepAlive, PacketVisualization,StartTime,EndTime,Duration,ClientTTL,ClientLowHops,ServerTTL,ServerLowHops,");
 
             long traceFirstTick = 0;
             if (Trace.frames != null && Trace.frames.Count > 0)
@@ -3521,22 +3528,113 @@ namespace SQLNA
 
             foreach (ConversationData c in Trace.conversations)
             {
-                int firstFile = Trace.files.IndexOf(((FrameData)(c.frames[0])).file);
-                int lastFile = Trace.files.IndexOf(((FrameData)(c.frames[c.frames.Count - 1])).file);
                 long firstTick = ((FrameData)c.frames[0]).ticks;
                 long endTicks = ((FrameData)c.frames[c.frames.Count - 1]).ticks;
                 long duration = endTicks - firstTick;
-                string ServerName = "";
-                string ServerVersion = "";
+                string sourceIP = ((c.isIPV6) ? utility.FormatIPV6Address(c.sourceIPHi, c.sourceIPLo) : utility.FormatIPV4Address(c.sourceIP));
+                string destinationIp = ((c.isIPV6) ? utility.FormatIPV6Address(c.destIPHi, c.destIPLo) : utility.FormatIPV4Address(c.destIP));
+                string sourcePort = c.sourcePort.ToString();
+                string destPort = c.destPort.ToString();
 
-                SQLServer s = Trace.FindSQLServer(c.destIP, c.destIPHi, c.destIPLo, c.destPort, c.isIPV6);
-                if (s != null)
+                bool sourceIpFilterPresent = !string.IsNullOrWhiteSpace(SOURCE_IP);
+                bool destIpFilterPresent = !string.IsNullOrWhiteSpace(DESTINATION_IP);
+                bool portPresent = !string.IsNullOrWhiteSpace(PORT);
+
+                bool sourceIpFilterMatching = sourceIpFilterPresent && SOURCE_IP == sourceIP;
+                bool destIpFilterMatching = destIpFilterPresent && DESTINATION_IP == destinationIp;
+                bool portFilterMatching = portPresent && (PORT == sourcePort || PORT == destPort);
+
+                bool showRecord = true;
+
+                if (!sourceIpFilterPresent && !destIpFilterPresent && !portPresent)
                 {
-                    ServerName = s.sqlHostName;
-                    ServerVersion = s.serverVersion;
+                    showRecord = true;
+                }
+                else if (sourceIpFilterPresent && destIpFilterPresent && portPresent)
+                {
+                    if (sourceIpFilterMatching && destIpFilterMatching && portFilterMatching)
+                    {
+                        showRecord = true;
+                    }
+                    else
+                    {
+                        showRecord = false;
+                    }
+                }
+                else if (sourceIpFilterPresent && !destIpFilterPresent && !portPresent)
+                {
+                    if (sourceIpFilterMatching)
+                    {
+                        showRecord = true;
+                    }
+                    else
+                    {
+                        showRecord = false;
+                    }
+                }
+                else if (!sourceIpFilterPresent && destIpFilterPresent && !portPresent)
+                {
+                    if (destIpFilterMatching)
+                    {
+                        showRecord = true;
+                    }
+                    else
+                    {
+                        showRecord = false;
+                    }
+                }
+                else if (!sourceIpFilterPresent && !destIpFilterPresent && portPresent)
+                {
+                    if (portFilterMatching)
+                    {
+                        showRecord = true;
+                    }
+                    else
+                    {
+                        showRecord = false;
+                    }
+                }
+                else if (sourceIpFilterPresent && destIpFilterPresent && !portPresent)
+                {
+                    if (sourceIpFilterMatching && destIpFilterMatching)
+                    {
+                        showRecord = true;
+                    }
+                    else
+                    {
+                        showRecord = false;
+                    }
+                }
+                else if (sourceIpFilterPresent && !destIpFilterPresent && portPresent)
+                {
+                    if (sourceIpFilterMatching && portFilterMatching)
+                    {
+                        showRecord = true;
+                    }
+                    else
+                    {
+                        showRecord = false;
+                    }
+                }
+                else if (!sourceIpFilterPresent && destIpFilterPresent && portPresent)
+                {
+                    if (destIpFilterMatching && portFilterMatching)
+                    {
+                        showRecord = true;
+                    }
+                    else
+                    {
+                        showRecord = false;
+                    }
+                }
+                else
+                {
+                    showRecord = true;
                 }
 
-                Program.logStat(((c.isIPV6) ? utility.FormatIPV6Address(c.sourceIPHi, c.sourceIPLo) : utility.FormatIPV4Address(c.sourceIP)) + "," +
+                if (showRecord)
+                {
+                    Program.logStat(((c.isIPV6) ? utility.FormatIPV6Address(c.sourceIPHi, c.sourceIPLo) : utility.FormatIPV4Address(c.sourceIP)) + "," +
                                 c.sourcePort + "," +
                                 ((c.isIPV6) ? utility.FormatIPV6Address(c.destIPHi, c.destIPLo) : utility.FormatIPV4Address(c.destIP)) + "," +
                                 c.destPort + "," +
@@ -3550,47 +3648,100 @@ namespace SQLNA
                                 c.duplicateClientPackets + "," +
                                 c.duplicateServerPackets + "," +
                                 c.keepAliveCount + "," +
-                                (c.hasIntegratedSecurity ? "Y" : "") + "," +
-                                (c.hasNTLMChallenge || c.hasNTLMResponse ? "Y" : "") + "," +
-                                (c.hasLogin7 ? "Y" : "") + "," +
-                                (c.isEncrypted ? (c.isEncRequired ? "R" : "Y") : "") + "," +
-                                (c.isSQL && (c.isMARSEnabled || (c.smpAckCount + c.smpSynCount + c.smpFinCount + c.smpDataCount) > 0) ? "Y" : "") + "," +
-                                (c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count -1) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20)) + "," +
-                                // Pktmon,MaxPktmonDelay,PktmonDrop,PktmonDropReason
-                                (Trace.hasPktmonRecords ? "Y" : "") + "," +
-                                (Trace.hasPktmonRecords ? $"{(c.pktmonMaxDelay / utility.TICKS_PER_SECOND).ToString("0.000000")}" : "") + "," +
-                                (Trace.hasPktmonRecords && c.hasPktmonDroppedEvent ? $"Y" : "") + "," +
-                                (Trace.hasPktmonRecords && c.hasPktmonDroppedEvent ? GetPktmonDropReasonText(c.pktmonDropReason) : "") + "," +
-                                c.maxPayloadSize + "," +
-                                (c.maxPayloadLimit ? "Y": "") + "," +
-                                c.frames.Count + "," +
-                                c.totalBytes + "," +
-                                "," +   // do not have a separate counter for sent bytes      TODO ? do we really need it?
-                                "," +   // do not have a separate counter for received bytes  TODO ? do we really need it?
-                                (c.frames.Count > 1 ? (c.totalBytes * 1.0 / duration * utility.TICKS_PER_SECOND).ToString("0") : "") + "," +
-                                firstFile + "," +
-                                lastFile + "," +
+                                (c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count - 1) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20)) + "," + // Packet Visuzalization
                                 new DateTime(firstTick).ToString(utility.TIME_FORMAT) + "," +
                                 new DateTime(endTicks).ToString(utility.TIME_FORMAT) + "," +
                                 (duration / utility.TICKS_PER_SECOND).ToString("0.000000") + "," +
                                 (c.TTLCountOut == 0 ? "" : (c.TTLSumOut / c.TTLCountOut).ToString()) + "," +
                                 (c.TTLCountOut == 0 ? "" : c.minTTLHopsOut.ToString()) + "," +
                                 (c.TTLCountIn == 0 ? "" : (c.TTLSumIn / c.TTLCountIn).ToString()) + "," +
-                                (c.TTLCountIn == 0 ? "" : c.minTTLHopsIn.ToString()) + "," +
-                                ServerName + "," +
-                                ServerVersion + "," +
-                                ((c.databaseName == null) ? "" : c.databaseName) + "," +
-                                c.FriendlyTDSVersionServer + "," +
-                                c.FriendlyTDSVersionClient + "," + 
-                                ((c.tlsVersionServer == null) ? "" : c.tlsVersionServer) + "," +
-                                ((c.tlsVersionClient == null) ? "" : c.tlsVersionClient) + "," +
-                                c.RedirectServer.Replace(",", "<") + "," +
-                                (c.RedirectPort == 0 ? "" : c.RedirectPort.ToString()) + "," +
-                                (c.Error == 0 ? "" : c.Error.ToString()) + "," +
-                                (c.ErrorState == 0 ? "" : c.ErrorState.ToString()) + "," +
-                                c.ErrorMsg.Replace(",", "."));  // replace comma with period, otherwise this MUST be the last column
+                                (c.TTLCountIn == 0 ? "" : c.minTTLHopsIn.ToString()) + ".");  // replace comma with period, otherwise this MUST be the last column
+                }
             }
         }
+
+        //private static void OutputStats(NetworkTrace Trace)
+        //{
+        //    Program.logStat(@"SourceIP,SourcePort,DestIP,DestPort,IPVersion,Protocol,Syn,Fin,Reset,AckSynDelayms,Retransmit,ClientDup,ServerDup,KeepAlive,Integrated Login,NTLM,Login7,Encrypted,Mars,PacketVisualization,Pktmon,MaxPktmonDelay,PktmonDrop,PktmonDropReason,MaxPayloadSize,PayloadSizeLimit,Frames,Bytes,SentBytes,ReceivedBytes,Bytes/Sec,StartFile,EndFile,StartTime,EndTime,Duration,ClientTTL,ClientLowHops,ServerTTL,ServerLowHops,ServerName,ServerVersion,DatabaseName,ServerTDSVersion,ClientTDSVersion,ServerTLSVersion,ClientTLSVersion,RedirSrv,RedirPort,Error,ErrorState,ErrorMessage,");
+
+        //    long traceFirstTick = 0;
+        //    if (Trace.frames != null && Trace.frames.Count > 0)
+        //    {
+        //        traceFirstTick = ((FrameData)Trace.frames[0]).ticks;
+        //    }
+
+        //    foreach (ConversationData c in Trace.conversations)
+        //    {
+        //        int firstFile = Trace.files.IndexOf(((FrameData)(c.frames[0])).file);
+        //        int lastFile = Trace.files.IndexOf(((FrameData)(c.frames[c.frames.Count - 1])).file);
+        //        long firstTick = ((FrameData)c.frames[0]).ticks;
+        //        long endTicks = ((FrameData)c.frames[c.frames.Count - 1]).ticks;
+        //        long duration = endTicks - firstTick;
+        //        string ServerName = "";
+        //        string ServerVersion = "";
+
+        //        SQLServer s = Trace.FindSQLServer(c.destIP, c.destIPHi, c.destIPLo, c.destPort, c.isIPV6);
+        //        if (s != null)
+        //        {
+        //            ServerName = s.sqlHostName;
+        //            ServerVersion = s.serverVersion;
+        //        }
+
+        //        Program.logStat(((c.isIPV6) ? utility.FormatIPV6Address(c.sourceIPHi, c.sourceIPLo) : utility.FormatIPV4Address(c.sourceIP)) + "," +
+        //                        c.sourcePort + "," +
+        //                        ((c.isIPV6) ? utility.FormatIPV6Address(c.destIPHi, c.destIPLo) : utility.FormatIPV4Address(c.destIP)) + "," +
+        //                        c.destPort + "," +
+        //                        ((c.isIPV6) ? "IPV6" : "IPV4") + "," +
+        //                        GetProtocolName(c) + "," +
+        //                        c.synCount + "," +
+        //                        c.finCount + "," +
+        //                        c.resetCount + "," +
+        //                        (c.isUDP || c.ackSynTime == 0 ? "" : ((int)(c.LoginDelay("AS", firstTick) / utility.TICKS_PER_MILLISECOND)).ToString()) + "," +
+        //                        c.rawRetransmits + "," +
+        //                        c.duplicateClientPackets + "," +
+        //                        c.duplicateServerPackets + "," +
+        //                        c.keepAliveCount + "," +
+        //                        (c.hasIntegratedSecurity ? "Y" : "") + "," +
+        //                        (c.hasNTLMChallenge || c.hasNTLMResponse ? "Y" : "") + "," +
+        //                        (c.hasLogin7 ? "Y" : "") + "," +
+        //                        (c.isEncrypted ? (c.isEncRequired ? "R" : "Y") : "") + "," +
+        //                        (c.isSQL && (c.isMARSEnabled || (c.smpAckCount + c.smpSynCount + c.smpFinCount + c.smpDataCount) > 0) ? "Y" : "") + "," +
+        //                        (c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count - 1) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20)) + "," +
+        //                        // Pktmon,MaxPktmonDelay,PktmonDrop,PktmonDropReason
+        //                        (Trace.hasPktmonRecords ? "Y" : "") + "," +
+        //                        (Trace.hasPktmonRecords ? $"{(c.pktmonMaxDelay / utility.TICKS_PER_SECOND).ToString("0.000000")}" : "") + "," +
+        //                        (Trace.hasPktmonRecords && c.hasPktmonDroppedEvent ? $"Y" : "") + "," +
+        //                        (Trace.hasPktmonRecords && c.hasPktmonDroppedEvent ? GetPktmonDropReasonText(c.pktmonDropReason) : "") + "," +
+        //                        c.maxPayloadSize + "," +
+        //                        (c.maxPayloadLimit ? "Y" : "") + "," +
+        //                        c.frames.Count + "," +
+        //                        c.totalBytes + "," +
+        //                        "," +   // do not have a separate counter for sent bytes      TODO ? do we really need it?
+        //                        "," +   // do not have a separate counter for received bytes  TODO ? do we really need it?
+        //                        (c.frames.Count > 1 ? (c.totalBytes * 1.0 / duration * utility.TICKS_PER_SECOND).ToString("0") : "") + "," +
+        //                        firstFile + "," +
+        //                        lastFile + "," +
+        //                        new DateTime(firstTick).ToString(utility.TIME_FORMAT) + "," +
+        //                        new DateTime(endTicks).ToString(utility.TIME_FORMAT) + "," +
+        //                        (duration / utility.TICKS_PER_SECOND).ToString("0.000000") + "," +
+        //                        (c.TTLCountOut == 0 ? "" : (c.TTLSumOut / c.TTLCountOut).ToString()) + "," +
+        //                        (c.TTLCountOut == 0 ? "" : c.minTTLHopsOut.ToString()) + "," +
+        //                        (c.TTLCountIn == 0 ? "" : (c.TTLSumIn / c.TTLCountIn).ToString()) + "," +
+        //                        (c.TTLCountIn == 0 ? "" : c.minTTLHopsIn.ToString()) + "," +
+        //                        ServerName + "," +
+        //                        ServerVersion + "," +
+        //                        ((c.databaseName == null) ? "" : c.databaseName) + "," +
+        //                        c.FriendlyTDSVersionServer + "," +
+        //                        c.FriendlyTDSVersionClient + "," +
+        //                        ((c.tlsVersionServer == null) ? "" : c.tlsVersionServer) + "," +
+        //                        ((c.tlsVersionClient == null) ? "" : c.tlsVersionClient) + "," +
+        //                        c.RedirectServer.Replace(",", "<") + "," +
+        //                        (c.RedirectPort == 0 ? "" : c.RedirectPort.ToString()) + "," +
+        //                        (c.Error == 0 ? "" : c.Error.ToString()) + "," +
+        //                        (c.ErrorState == 0 ? "" : c.ErrorState.ToString()) + "," +
+        //                        c.ErrorMsg.Replace(",", "."));  // replace comma with period, otherwise this MUST be the last column
+        //    }
+        //}
 
         private static string GetProtocolName(ConversationData c)
         {

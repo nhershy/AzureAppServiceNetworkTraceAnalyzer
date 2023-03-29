@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -37,9 +38,10 @@ namespace SQLNAUI
 
         private void UpdateOutputFilePath(string filePath)
         {
+            string fileName = Path.GetFileName(filePath);
             int lastSlash = filePath.LastIndexOf('\\');
             filePath = (lastSlash > -1) ? filePath.Substring(0, lastSlash) : filePath;
-            TxtLogFile.Text = filePath + "\\dump.stat.csv";
+            TxtLogFile.Text = filePath + "\\" + fileName +"-results.csv";
         }
 
         private void FrmSQLNAUI_Load(object sender, EventArgs e)

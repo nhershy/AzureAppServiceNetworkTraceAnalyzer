@@ -41,6 +41,10 @@ namespace SQLNA
             string outFile = null;
             string diagOutFile = null;
             string statOutFile = null;
+
+            string sourceIp = string.Empty;
+            string destinationIp = string.Empty;
+            string portNumber = string.Empty;
             
             ArrayList sqlHints = new ArrayList();
 
@@ -54,6 +58,9 @@ namespace SQLNA
             cp.AddRule(new ArgRule("", true, false, true, true));                 // file name is required
             cp.AddRule(new ArgRule("output", true, false, true, false));          // -output filename is optional and case-insensitive, one time only
             cp.AddRule(new ArgRule("sql", true, true, false, false));             // -sql 10:10:10:10,1433 -sql 10.10.10.11,1433 ... -sql ip,port     0..n times   (ipv4 or ipv6)
+            cp.AddRule(new ArgRule("source", true, true, false, false));
+            cp.AddRule(new ArgRule("dest", true, true, false, false));
+            cp.AddRule(new ArgRule("port", true, true, false, false));
             cp.AddRule(new ArgRule("convList", false, false, true, false));       // -convList     outputs a rather lengthy report segment that is normally not required
             cp.AddRule(new ArgRule("filterFmt", true, false, true, false));       // -filterFmt NETMON|WireShark   replaces the Client IP address and port columns with a filter string, instead
             string ruleViolation = cp.Parse(args);
@@ -78,14 +85,19 @@ namespace SQLNA
                 values = cp.GetArgs("output");
                 if (values.Count != 0)  // argument supplied
                 {
-                    outFile = ((CommandLineArgs)values[0]).value;
+                    statOutFile = ((CommandLineArgs)values[0]).value;
+                    diagOutFile = utility.getDiagLogFileName(statOutFile);
+                    outFile = utility.getGenericLogFileName(statOutFile);
                 }
                 else // argument omitted
                 {
-                    outFile = utility.getLogFileName(fileSpec);
+                    statOutFile = utility.getStatLogFileName(fileSpec);
+                    diagOutFile = utility.getDiagLogFileName(statOutFile);
+                    outFile = utility.getGenericLogFileName(statOutFile);
                 }
-                diagOutFile = utility.getDiagLogFileName(outFile);
-                statOutFile = utility.getStatLogFileName(outFile);
+                
+
+
                 //
                 // set sqlHints
                 //
@@ -94,6 +106,26 @@ namespace SQLNA
                 {
                     foreach (CommandLineArgs value in values) sqlHints.Add(value.value);
                 }
+
+
+                values = cp.GetArgs("source");
+                if (values.Count != 0)
+                {
+                    sourceIp = (values[0] as CommandLineArgs).value;
+                }
+
+                values = cp.GetArgs("dest");
+                if (values.Count != 0)
+                {
+                    destinationIp = (values[0] as CommandLineArgs).value;
+                }
+
+                values = cp.GetArgs("port");
+                if (values.Count != 0)
+                {
+                    portNumber = (values[0] as CommandLineArgs).value;
+                }
+
                 //
                 // set outputConversationList
                 //
@@ -102,6 +134,7 @@ namespace SQLNA
                 {
                     outputConversationList = true;
                 }
+
                 //
                 // set filterFormat
                 //
@@ -149,7 +182,7 @@ namespace SQLNA
                 diagFile = new StreamWriter(diagOutFile);
 
                 // output diagnostic header
-                logDiagnostic("SQL Server Network Analyzer " + VERSION_NUMBER);
+                logDiagnostic("Azure App Service Network Analyzer");
                 logDiagnostic("Command line arguments:      " + string.Join(" ", args));
                 logDiagnostic("Analysis run on:             " + DateTime.Now.ToString(utility.DATE_FORMAT));
                     
@@ -231,7 +264,7 @@ namespace SQLNA
 
                 CurrentActivity = "writing report.";
                 statFile = new StreamWriter(statOutFile);
-                OutputText.TextReport(Trace);
+                OutputText.TextReport(Trace, sourceIp, destinationIp, portNumber);
                 statFile.Close();
                 statFile = null;
             }
