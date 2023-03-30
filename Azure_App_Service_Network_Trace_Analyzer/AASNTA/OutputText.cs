@@ -3560,6 +3560,8 @@ namespace AASNTA
                 traceFirstTick = ((FrameData)Trace.frames[0]).ticks;
             }
 
+            
+
             int count = 2;
             foreach (ConversationData c in Trace.conversations)
             {
@@ -3673,7 +3675,13 @@ namespace AASNTA
                     showRecord = false;
                 }
 
-                string packetVisualization = (c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count - 1) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20));
+                //Debug 
+                if (sourceIP == "10.77.97.22" && destinationIp == "10.77.70.139")
+                {
+                    int a = 0;
+                }
+
+                string packetVisualization = (c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20));
 
                 // Change all AS to SA (Syn/Ack)
                 packetVisualization = packetVisualization.Replace("AS", "SA");
@@ -3737,10 +3745,10 @@ namespace AASNTA
                     }
                     EXCEL_WORKSHEET.Cells[count, 10] = (c.isUDP || c.ackSynTime == 0 ? "" : ((int)(c.LoginDelay("AS", firstTick) / utility.TICKS_PER_MILLISECOND)).ToString());
                     EXCEL_WORKSHEET.Cells[count, 11] = c.rawRetransmits;
-                    if (c.rawRetransmits > 0)
+                    if ((int)c.rawRetransmits > 0 && GetProtocolName(c) == "TCP")
                     {
-                        EXCEL_WORKSHEET.Cells[count, 11].Interior.Color = XlRgbColor.rgbDarkOrange;
-                        EXCEL_WORKSHEET.Cells[count, 11].Font.Color = XlRgbColor.rgbWhite;
+                        EXCEL_WORKSHEET.Cells[count, 11].Interior.Color = XlRgbColor.rgbYellow;
+                        EXCEL_WORKSHEET.Cells[count, 11].Font.Color = XlRgbColor.rgbBlack;
                     }
                     EXCEL_WORKSHEET.Cells[count, 12] = c.duplicateClientPackets;
                     EXCEL_WORKSHEET.Cells[count, 13] = c.duplicateServerPackets;
@@ -3753,10 +3761,10 @@ namespace AASNTA
                         EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbWhite;
                     }
                     // Warning - Did not end with FIN
-                    else if (!string.IsNullOrWhiteSpace(packetVisualization) && !packetVisualization.EndsWith("F"))
+                    else if (!string.IsNullOrWhiteSpace(packetVisualization) && !packetVisualization.Contains(">F") && !packetVisualization.Contains("<F"))
                     {
-                        EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbDarkOrange;
-                        EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbWhite;
+                        EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbYellow;
+                        EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbBlack;
                     }
                     // Healthy - Shows successful 3 way handshake
                     else if (!string.IsNullOrWhiteSpace(packetVisualization) && packetVisualization.StartsWith(">S <SA >A"))
