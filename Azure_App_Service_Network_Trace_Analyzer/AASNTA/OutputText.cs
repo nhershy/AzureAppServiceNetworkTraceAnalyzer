@@ -3551,6 +3551,9 @@ namespace AASNTA
             EXCEL_WORKSHEET.Cells[1, 21] = "ServerTTL";
             EXCEL_WORKSHEET.Cells[1, 22] = "ServerLowHops";
 
+            // Bold headers
+            EXCEL_WORKSHEET.Cells[1, 1].EntireRow.Font.Bold = true;
+
             long traceFirstTick = 0;
             if (Trace.frames != null && Trace.frames.Count > 0)
             {
@@ -3664,6 +3667,29 @@ namespace AASNTA
                     showRecord = true;
                 }
 
+                // Remove UDP traffic
+                if (GetProtocolName(c) == "UDP")
+                {
+                    showRecord = false;
+                }
+
+                string packetVisualization = (c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count - 1) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20));
+
+                // Change all AS to SA (Syn/Ack)
+                packetVisualization = packetVisualization.Replace("AS", "SA");
+
+                // Change AF to F (FIN)
+                packetVisualization = packetVisualization.Replace("AF", "F");
+
+                // Change AR to R (RST)
+                packetVisualization = packetVisualization.Replace("AR", "R");
+
+                // Change AP to P (PUSH)
+                packetVisualization = packetVisualization.Replace("AP", "P");
+
+                // Change AD to D (Encrypted Data)
+                packetVisualization = packetVisualization.Replace("AD", "D");
+
                 if (showRecord)
                 {
                     Program.logStat(((c.isIPV6) ? utility.FormatIPV6Address(c.sourceIPHi, c.sourceIPLo) : utility.FormatIPV4Address(c.sourceIP)) + "," +
@@ -3680,7 +3706,7 @@ namespace AASNTA
                                 c.duplicateClientPackets + "," +
                                 c.duplicateServerPackets + "," +
                                 c.keepAliveCount + "," +
-                                (c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count - 1) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20)) + "," + // Packet Visuzalization
+                                packetVisualization + "," + // Packet Visuzalization
                                 new DateTime(firstTick).ToString(utility.TIME_FORMAT) + "," +
                                 new DateTime(endTicks).ToString(utility.TIME_FORMAT) + "," +
                                 (duration / utility.TICKS_PER_SECOND).ToString("0.000000") + "," +
@@ -3719,10 +3745,23 @@ namespace AASNTA
                     EXCEL_WORKSHEET.Cells[count, 12] = c.duplicateClientPackets;
                     EXCEL_WORKSHEET.Cells[count, 13] = c.duplicateServerPackets;
                     EXCEL_WORKSHEET.Cells[count, 14] = c.keepAliveCount;
-                    EXCEL_WORKSHEET.Cells[count, 15] = (c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count - 1) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20));
-                    if (!string.IsNullOrWhiteSpace((c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count - 1) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20))) &&  !(c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count - 1) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20)).EndsWith("AF"))
+                    EXCEL_WORKSHEET.Cells[count, 15] = packetVisualization;
+                    // Error - Cannot reach destination (3 SYNs in a row, failure to make TCP handshake)
+                    if (!string.IsNullOrWhiteSpace(packetVisualization) && packetVisualization.StartsWith(">S >S >S"))
                     {
                         EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbIndianRed;
+                        EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbWhite;
+                    }
+                    // Warning - Did not end with FIN
+                    else if (!string.IsNullOrWhiteSpace(packetVisualization) && !packetVisualization.EndsWith("F"))
+                    {
+                        EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbDarkOrange;
+                        EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbWhite;
+                    }
+                    // Healthy - Shows successful 3 way handshake
+                    else if (!string.IsNullOrWhiteSpace(packetVisualization) && packetVisualization.StartsWith(">S <SA >A"))
+                    {
+                        EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbForestGreen;
                         EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbWhite;
                     }
                     EXCEL_WORKSHEET.Cells[count, 16] = new DateTime(firstTick).ToString(utility.TIME_FORMAT);
