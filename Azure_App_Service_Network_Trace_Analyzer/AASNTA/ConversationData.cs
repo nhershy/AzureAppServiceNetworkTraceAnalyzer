@@ -139,6 +139,7 @@ namespace AASNTA
         public string RedirectServer = "";
         public string PipeAdminName = "";              // - set in TCP Parser
         public ArrayList PipeNames = new ArrayList();  // - set in TCP Parser
+        public string tlsVersionUsed = null;      //   - set in ProcessTDS
 
         public void AddFrame(FrameData f, NetworkTrace t)  // replaces adding the frame directly to the frames ArrayList
         {

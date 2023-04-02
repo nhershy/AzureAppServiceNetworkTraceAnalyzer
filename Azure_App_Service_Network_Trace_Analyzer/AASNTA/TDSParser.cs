@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using System;
 using System.Collections;
+using System.Data;
 
 namespace AASNTA
 {
@@ -173,7 +174,119 @@ namespace AASNTA
         }
 
         // post processing
+
         public static void ProcessTDS(NetworkTrace trace)
+        {
+            try
+            {
+                foreach (ConversationData c in trace.conversations)
+                {
+                    foreach (FrameData frame in c.frames)
+                    {
+                        //https://www.ibm.com/docs/en/ztpf/1.1.0.15?topic=sessions-ssl-record-format 
+                        //https://serializethoughts.com/2014/07/27/dissecting-tls-client-hello-message
+
+                        if (frame.payload == null) continue;
+                        else if (frame.payload[0] == null) continue;
+                        else if (frame.payload[1] == null) continue;
+                        else if (frame.payload[2] == null) continue;
+
+                        int firstByte = frame.payload[0];
+                        int secondByte = frame.payload[1];
+                        int thirdByte = frame.payload[2];
+
+                        // TLS packets:
+                        // SSL3_RT_CHANGE_CIPHER_SPEC      20(x'14')
+                        // SSL3_RT_ALERT                   21(x'15')
+                        // SSL3_RT_HANDSHAKE               22(x'16')
+                        // SSL3_RT_APPLICATION_DATA        23(x'17')
+                        // TLS1_RT_HEARTBEAT               24(x'18')
+                        // There is no version information within the SSL record header, although it is available in the handshake.
+                        if (firstByte >= 20 && firstByte <= 24)
+                        {
+                            TLS tlsData = TLS.Parse(frame.payload, 0);
+                            if (tlsData != null && tlsData.handshake != null)
+                            {
+                                string tlsVersionUsed = getSSLVersion(tlsData.handshake.sslLevel);
+                                c.tlsVersionUsed = tlsVersionUsed;
+
+                                if (firstByte == 22 && tlsData.handshake.hasClientHello)
+                                {
+                                    frame.SetPacketType(FrameType.ClientHello);
+                                    int sslLevel = tlsData.handshake.clientHello.sslLevel;
+                                    c.tlsVersionClient = getSSLVersion(sslLevel);
+                                }
+                                else if (firstByte == 22 && tlsData.handshake.hasServerHello)
+                                {
+                                    frame.SetPacketType(FrameType.ServerHello);
+                                    int sslLevel = tlsData.handshake.serverHello.sslLevel;
+                                    c.tlsVersionServer = getSSLVersion(sslLevel);
+                                }
+                                else if (tlsData.handshake.hasClientKeyExchange)
+                                {
+                                    frame.SetPacketType(FrameType.KeyExchange);
+                                }
+                            }
+                            else if (tlsData != null)
+                            {
+                                if (firstByte == 20 || tlsData.hasCipherChangeSpec)
+                                {
+                                    //??
+                                }
+                                else if (firstByte == 23)
+                                {
+                                    // Encrypted data
+                                    frame.SetPacketType(FrameType.ApplicationData);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+            
+        }
+
+        private static string getSSLVersion(int sslLevel)
+        {
+            //sslLevel += 2;
+
+            //# SSL
+            //0x0002: "SSL_2_0", # 2
+            //0x0300: "SSL_3_0", # 768
+            //# TLS:
+            //0x0301: "TLS_1_0", # 769
+            //0x0302: "TLS_1_1", # 770
+            //0x0303: "TLS_1_2", # 771
+            //0x0304: "TLS_1_3", # 772
+            //# DTLS
+            //0x0100: "PROTOCOL_DTLS_1_0_OPENSSL_PRE_0_9_8f", # 256
+            //0x7f10: "TLS_1_3_DRAFT_16", # 32528
+            //0x7f12: "TLS_1_3_DRAFT_18", # 32530
+            //0xfeff: "DTLS_1_0", # 65279
+            //0xfefd: "DTLS_1_1", # 65277
+
+            if (sslLevel == 2)
+                return "SSL 2.0";
+            else if (sslLevel == 768)
+                return "SSL 3.0";
+            else if (sslLevel == 769)
+                return "TLS 1.0";
+            else if (sslLevel == 770)
+                return "TLS 1.1";
+            else if (sslLevel == 771)
+                return "TLS 1.2";
+            else if (sslLevel == 772)
+                return "TLS 1.3";
+            else
+                return string.Empty;
+        }
+
+
+        public static void ProcessTDS1(NetworkTrace trace)
         {
 
             foreach (ConversationData c in trace.conversations)

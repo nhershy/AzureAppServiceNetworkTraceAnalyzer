@@ -3543,13 +3543,16 @@ namespace AASNTA
             EXCEL_WORKSHEET.Cells[1, 13] = "ServerDup";
             EXCEL_WORKSHEET.Cells[1, 14] = "KeepAlive";
             EXCEL_WORKSHEET.Cells[1, 15] = "PacketVisualization";
-            EXCEL_WORKSHEET.Cells[1, 16] = "StartTime";
-            EXCEL_WORKSHEET.Cells[1, 17] = "EndTime";
-            EXCEL_WORKSHEET.Cells[1, 18] = "Duration";
-            EXCEL_WORKSHEET.Cells[1, 19] = "ClientTTL";
-            EXCEL_WORKSHEET.Cells[1, 20] = "ClientLowHops";
-            EXCEL_WORKSHEET.Cells[1, 21] = "ServerTTL";
-            EXCEL_WORKSHEET.Cells[1, 22] = "ServerLowHops";
+            EXCEL_WORKSHEET.Cells[1, 16] = "TLSVersionUsed";
+            EXCEL_WORKSHEET.Cells[1, 17] = "TLSVerClient";
+            EXCEL_WORKSHEET.Cells[1, 18] = "TLSVerServer";
+            EXCEL_WORKSHEET.Cells[1, 19] = "StartTime";
+            EXCEL_WORKSHEET.Cells[1, 20] = "EndTime";
+            EXCEL_WORKSHEET.Cells[1, 21] = "Duration";
+            EXCEL_WORKSHEET.Cells[1, 22] = "ClientTTL";
+            EXCEL_WORKSHEET.Cells[1, 23] = "ClientLowHops";
+            EXCEL_WORKSHEET.Cells[1, 24] = "ServerTTL";
+            EXCEL_WORKSHEET.Cells[1, 25] = "ServerLowHops";
 
             // Bold headers
             EXCEL_WORKSHEET.Cells[1, 1].EntireRow.Font.Bold = true;
@@ -3675,12 +3678,6 @@ namespace AASNTA
                     showRecord = false;
                 }
 
-                //Debug 
-                if (sourceIP == "10.77.97.22" && destinationIp == "10.77.70.139")
-                {
-                    int a = 0;
-                }
-
                 string packetVisualization = (c.isUDP ? "" : c.frames.Count <= 40 ? c.GetPacketList(0, c.frames.Count) : c.GetFirstPacketList(20) + " ... " + c.GetLastPacketList(20));
 
                 // Change all AS to SA (Syn/Ack)
@@ -3695,8 +3692,8 @@ namespace AASNTA
                 // Change AP to P (PUSH)
                 packetVisualization = packetVisualization.Replace("AP", "P");
 
-                // Change AD to D (Encrypted Data)
-                packetVisualization = packetVisualization.Replace("AD", "D");
+                // Change AD to E (Encrypted Data)
+                packetVisualization = packetVisualization.Replace("AD", "E");
 
                 if (showRecord)
                 {
@@ -3722,6 +3719,8 @@ namespace AASNTA
                                 (c.TTLCountOut == 0 ? "" : c.minTTLHopsOut.ToString()) + "," +
                                 (c.TTLCountIn == 0 ? "" : (c.TTLSumIn / c.TTLCountIn).ToString()) + "," +
                                 (c.TTLCountIn == 0 ? "" : c.minTTLHopsIn.ToString()) + ".");  // replace comma with period, otherwise this MUST be the last column
+
+                    
 
                     EXCEL_WORKSHEET.Cells[count, 1] = ((c.isIPV6) ? utility.FormatIPV6Address(c.sourceIPHi, c.sourceIPLo) : utility.FormatIPV4Address(c.sourceIP));
                     EXCEL_WORKSHEET.Cells[count, 2] = c.sourcePort;
@@ -3754,14 +3753,21 @@ namespace AASNTA
                     EXCEL_WORKSHEET.Cells[count, 13] = c.duplicateServerPackets;
                     EXCEL_WORKSHEET.Cells[count, 14] = c.keepAliveCount;
                     EXCEL_WORKSHEET.Cells[count, 15] = packetVisualization;
+                    // Error - If RST exists
+                    if (!string.IsNullOrWhiteSpace(packetVisualization) && (packetVisualization.Contains("<R") || packetVisualization.Contains(">R")))
+                    {
+                        EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbIndianRed;
+                        EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbWhite;
+                    }
                     // Error - Cannot reach destination (3 SYNs in a row, failure to make TCP handshake)
-                    if (!string.IsNullOrWhiteSpace(packetVisualization) && packetVisualization.StartsWith(">S >S >S"))
+                    else if (!string.IsNullOrWhiteSpace(packetVisualization) && packetVisualization.StartsWith(">S >S >S"))
                     {
                         EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbIndianRed;
                         EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbWhite;
                     }
                     // Warning - Did not end with FIN
-                    else if (!string.IsNullOrWhiteSpace(packetVisualization) && !packetVisualization.Contains(">F") && !packetVisualization.Contains("<F"))
+                    // And SYN != 0 (meaning the conversation was already ongoing before the network trace was taken
+                    else if (!string.IsNullOrWhiteSpace(packetVisualization) && !packetVisualization.Contains(">F") && !packetVisualization.Contains("<F") && c.synCount > 0)
                     {
                         EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbYellow;
                         EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbBlack;
@@ -3772,13 +3778,22 @@ namespace AASNTA
                         EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbForestGreen;
                         EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbWhite;
                     }
-                    EXCEL_WORKSHEET.Cells[count, 16] = new DateTime(firstTick).ToString(utility.TIME_FORMAT);
-                    EXCEL_WORKSHEET.Cells[count, 17] = new DateTime(endTicks).ToString(utility.TIME_FORMAT);
-                    EXCEL_WORKSHEET.Cells[count, 18] = (duration / utility.TICKS_PER_SECOND).ToString("0.000000");
-                    EXCEL_WORKSHEET.Cells[count, 19] = (c.TTLCountOut == 0 ? "" : (c.TTLSumOut / c.TTLCountOut).ToString());
-                    EXCEL_WORKSHEET.Cells[count, 20] = (c.TTLCountOut == 0 ? "" : c.minTTLHopsOut.ToString());
-                    EXCEL_WORKSHEET.Cells[count, 21] = (c.TTLCountIn == 0 ? "" : (c.TTLSumIn / c.TTLCountIn).ToString());
-                    EXCEL_WORKSHEET.Cells[count, 22] = (c.TTLCountIn == 0 ? "" : c.minTTLHopsIn.ToString());
+                    EXCEL_WORKSHEET.Cells[count, 16] = c.tlsVersionUsed;
+                    EXCEL_WORKSHEET.Cells[count, 17] = c.tlsVersionClient;
+                    EXCEL_WORKSHEET.Cells[count, 18] = c.tlsVersionServer;
+                    // Error - if their is client TLS version but not server TLS, means never establish connection with server
+                    if (!string.IsNullOrWhiteSpace(c.tlsVersionClient) && string.IsNullOrWhiteSpace(c.tlsVersionServer))
+                    {
+                        EXCEL_WORKSHEET.Cells[count, 18].Interior.Color = XlRgbColor.rgbIndianRed;
+                        EXCEL_WORKSHEET.Cells[count, 18].Font.Color = XlRgbColor.rgbWhite;
+                    }
+                    EXCEL_WORKSHEET.Cells[count, 19] = new DateTime(firstTick).ToString(utility.TIME_FORMAT);
+                    EXCEL_WORKSHEET.Cells[count, 20] = new DateTime(endTicks).ToString(utility.TIME_FORMAT);
+                    EXCEL_WORKSHEET.Cells[count, 21] = (duration / utility.TICKS_PER_SECOND).ToString("0.000000");
+                    EXCEL_WORKSHEET.Cells[count, 22] = (c.TTLCountOut == 0 ? "" : (c.TTLSumOut / c.TTLCountOut).ToString());
+                    EXCEL_WORKSHEET.Cells[count, 23] = (c.TTLCountOut == 0 ? "" : c.minTTLHopsOut.ToString());
+                    EXCEL_WORKSHEET.Cells[count, 24] = (c.TTLCountIn == 0 ? "" : (c.TTLSumIn / c.TTLCountIn).ToString());
+                    EXCEL_WORKSHEET.Cells[count, 25] = (c.TTLCountIn == 0 ? "" : c.minTTLHopsIn.ToString());
 
                     count++;
                 }

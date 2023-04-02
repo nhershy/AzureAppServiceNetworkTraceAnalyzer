@@ -170,6 +170,11 @@ namespace AASNTA
             }
         }
 
+        public void SetPacketType(FrameType ft)
+        {
+            frameType = ft;
+        }
+
         public string PacketTypeAndDirection
         {
             get
