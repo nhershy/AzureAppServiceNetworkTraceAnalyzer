@@ -3689,11 +3689,11 @@ namespace AASNTA
                 // Change AR to R (RST)
                 packetVisualization = packetVisualization.Replace("AR", "R");
 
-                // Change AP to P (PUSH)
-                packetVisualization = packetVisualization.Replace("AP", "P");
+                // Change AP (PUSH) to D (Data)
+                packetVisualization = packetVisualization.Replace("AP", "D");
 
-                // Change AD to E (Encrypted Data)
-                packetVisualization = packetVisualization.Replace("AD", "E");
+                // Change AD to ED (Encrypted Data)
+                packetVisualization = packetVisualization.Replace("AD", "ED");
 
                 if (showRecord)
                 {
@@ -3772,6 +3772,12 @@ namespace AASNTA
                         EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbYellow;
                         EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbBlack;
                     }
+                    // Error - CH but no SH response
+                    else if (!string.IsNullOrWhiteSpace(packetVisualization) && packetVisualization.Contains("CH") && !packetVisualization.Contains("SH"))
+                    {
+                        EXCEL_WORKSHEET.Cells[count, 15].Interior.Color = XlRgbColor.rgbIndianRed;
+                        EXCEL_WORKSHEET.Cells[count, 15].Font.Color = XlRgbColor.rgbWhite;
+                    }
                     // Healthy - Shows successful 3 way handshake
                     else if (!string.IsNullOrWhiteSpace(packetVisualization) && packetVisualization.StartsWith(">S <SA >A"))
                     {
@@ -3781,7 +3787,7 @@ namespace AASNTA
                     EXCEL_WORKSHEET.Cells[count, 16] = c.tlsVersionUsed;
                     EXCEL_WORKSHEET.Cells[count, 17] = c.tlsVersionClient;
                     EXCEL_WORKSHEET.Cells[count, 18] = c.tlsVersionServer;
-                    // Error - if their is client TLS version but not server TLS, means never establish connection with server
+                    // Error - if there is client TLS version but not server TLS, means never establish connection with server
                     if (!string.IsNullOrWhiteSpace(c.tlsVersionClient) && string.IsNullOrWhiteSpace(c.tlsVersionServer))
                     {
                         EXCEL_WORKSHEET.Cells[count, 18].Interior.Color = XlRgbColor.rgbIndianRed;
