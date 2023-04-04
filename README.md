@@ -6,7 +6,7 @@ The purpose of this tool is to facilitate the inspection of network traces by no
 ## How To Use
 There are two executables that must reside in the same folder: a command-line application `AASNTA.exe` and a graphical interface application `AASNTAUI.exe`. The UI is used to select files for parsing and builds the appropriate CMD command to pass to the main application: `AASNTA.exe`
 
-<p align="left">
+<p align="right">
   <img src="Documentation_assets/executables.png" width="80" height="80" />
 </p>
  
