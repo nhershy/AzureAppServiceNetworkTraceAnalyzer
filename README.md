@@ -10,7 +10,7 @@ There are two executables that must reside in the same folder: a command-line ap
   <img src="Documentation_assets/executables.png" width="150" height="80" />
 </p>
  
-Opening up the UI.exe, the user is greeted by a simple interface that has parameters for input file, output file, source IP, destination IP, and port number. 
+Opening up the AASNTAUI.exe, the user is greeted by a simple interface that has parameters for input file, output file, source IP, destination IP, and port number. 
 
 ##### AASNTAUI
 <p align="center">
