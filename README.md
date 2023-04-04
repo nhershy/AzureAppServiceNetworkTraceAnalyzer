@@ -36,7 +36,7 @@ The program outputs the Excel file with conditional highlighting to signify pote
 
 #### Packet Visualization Legend
 
-|     Packet Visualization Symbol       |     Meaning                                                                      |
+|     Symbol       |     Meaning                                                                                           |
 |------------------|-------------------------------------------------------------------------------------------------------|
 |     >            |     Packet from the client                                                                            |
 |     <            |     Packet from the server                                                                            |
