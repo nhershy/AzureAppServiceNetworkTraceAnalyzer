@@ -50,7 +50,7 @@ The program outputs the Excel file with conditional highlighting to signify pote
 |     CH           |     Client Hello                                                                                      |
 |     SH           |     Server Hello                                                                                      |
 |     KE           |     Key Exchange (this is not always visible in Packet Visualization,   don’t rely on seeing this)    |
-|  >S <SA >A    |     Successful 3-Way Handshake                                                                        |
+|  ">S <SA >A"    |     Successful 3-Way Handshake                                                                        |
 	
 
 ##### Three-Way Handshake
